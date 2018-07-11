@@ -126,7 +126,6 @@ class MainWidget(QWidget):
 
         self.launchButton.clicked.connect(self.on_click)
         self.setLayout(grid)
-        self.show()
 
     def show_message(self, message):
         messageBox = QMessageBox()
@@ -171,7 +170,8 @@ def main():
     logging.basicConfig(
         filename='connector.log', level=logging.INFO, format=formatstring)
     app = QApplication(sys.argv)
-    mw = MainWidget()
+    mainWidget = MainWidget()
+    mainWidget.show()
     sys.exit(app.exec_())
 
 
