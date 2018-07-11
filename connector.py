@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 from PyQt5.QtCore import QAbstractTableModel, QVariant, Qt
-from PyQt5.QtWidgets import (QWidget, QPushButton, QPlainTextEdit, QLineEdit, QMessageBox,
-    QApplication, QDesktopWidget, QTableView, QComboBox, QGridLayout, QLabel)
+from PyQt5.QtWidgets import (QWidget, QPushButton, QPlainTextEdit, QLineEdit,
+                             QMessageBox, QApplication, QDesktopWidget,
+                             QTableView, QComboBox, QGridLayout, QLabel)
 
 import psycopg2
 
@@ -95,8 +96,9 @@ class MainWidget(QWidget):
         grid = QGridLayout()
         grid.setSpacing(20)
 
-        labels = ['Connection', 'Query field', 'Result']
-        self.connStringLabel, self.queryFieldLabel, self.resultTableLabel = [QLabel(label, self) for label in labels]
+        self.connStringLabel = QLabel('Connection', self)
+        self.queryFieldLabel = QLabel('Query field', self)
+        self.resultTableLabel = QLabel('Result', self)
 
         self.connString = QLineEdit(':memory:', self)
 
@@ -165,7 +167,9 @@ class MainWidget(QWidget):
 
 
 def main():
-    logging.basicConfig(filename='connector.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    formatstring = '%(asctime)s - %(levelname)s - %(message)s'
+    logging.basicConfig(
+        filename='connector.log', level=logging.INFO, format=formatstring)
     app = QApplication(sys.argv)
     mw = MainWidget()
     sys.exit(app.exec_())
