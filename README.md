@@ -1,6 +1,7 @@
 ## Description    
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Application for connecting and executing queries in SQLite3 and PostgreSQL.  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; You can test application using database Chinook_Sqlite.sqlite.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; You can test application using database Chinook_Sqlite.sqlite.  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; In case errors while queries executing you can find logs in 'connector.log' file.
 
 ## Installing  
 ```shell
