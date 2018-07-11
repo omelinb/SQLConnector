@@ -1,5 +1,5 @@
 ## Description    
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Application for connecting and executing queries in SQLite3 and PostgreSQL.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Application for connecting and executing queries in SQLite3 and PostgreSQL.  
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; You can test application using database Chinook_Sqlite.sqlite.
 
 ## Installing  
