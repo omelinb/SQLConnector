@@ -10,6 +10,10 @@ import psycopg2
 import logging
 import sqlite3
 import sys
+import os
+
+
+BASEDIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class Connector:
@@ -30,7 +34,7 @@ class Connector:
             cursor.execute(query)
             connect.commit()
             self.description = cursor.description
-            self.result = cursor.fetchall()
+            self.result = cursor.fetchmany(size=100)
 
     def get_headers(self):
         if self.description:
@@ -39,15 +43,6 @@ class Connector:
 
     def get_data(self):
         return self.result
-
-
-class ConnectorFactory:
-    @staticmethod
-    def get_connector(db_type, connstring):
-        db_types = {
-            'sqlite3': sqlite3,
-            'postgres': psycopg2}
-        return Connector(connstring, db_types[db_type])
 
 
 class ResultTableModel(QAbstractTableModel):
@@ -65,14 +60,14 @@ class ResultTableModel(QAbstractTableModel):
         return len(self.data)
 
     def columnCount(self, parent):
-        if len(self.data) > 0:
-            return len(self.data[0])
-        return 0
+        return len(self.headers)
 
     def data(self, index, role):
         if not index.isValid():
             return QVariant()
         elif role != Qt.DisplayRole:
+            return QVariant()
+        elif not self.data:
             return QVariant()
         return QVariant(self.data[index.row()][index.column()])
 
@@ -127,21 +122,28 @@ class MainWidget(QWidget):
         self.launchButton.clicked.connect(self.on_click)
         self.setLayout(grid)
 
-    def show_message(self, message):
+    def show_message(self, message, title='Message'):
         messageBox = QMessageBox()
         messageBox.setText(message)
-        messageBox.setWindowTitle('Message')
+        messageBox.setWindowTitle(title)
         messageBox.exec_()
 
     def on_click(self):
         connString = self.connString.text()
         query = self.queryField.toPlainText()
-        db_type = self.typesList.currentText()
+        dbType = self.typesList.currentText()
 
-        if db_type == 'sqlite3' and connString == '':
+        if not connString:
             connString = ':memory:'
 
-        connector = ConnectorFactory.get_connector(db_type, connString)
+        if dbType == 'sqlite3' and connString != ':memory:':
+            if not connString.startswith('/'):
+                connString = os.path.join(BASEDIR, connString)
+            if not os.path.isfile(connString):
+                self.show_message('There is no such database file.')
+                return
+
+        connector = get_connector(dbType, connString)
         try:
             connector.execute(query)
             data, headers = connector.get_data(), connector.get_headers()
@@ -151,18 +153,25 @@ class MainWidget(QWidget):
 
             model = ResultTableModel(data, headers)
             self.resultTable.setModel(model)
-        except psycopg2.ProgrammingError as e:
+        except (psycopg2.ProgrammingError, sqlite3.OperationalError) as e:
+            self.show_message(str(e)[0].capitalize() + str(e)[1:], 'Error!')
             logging.error(e)
-            self.show_message('Error! Try to check your sql query.')
         except psycopg2.OperationalError as e:
+            self.show_message(str(e)[0].capitalize() + str(e)[1:], 'Error!')
             logging.error(e)
-            self.show_message('Error! Try to check your connection settings.')
 
     def center(self):
         frameGeometry = self.frameGeometry()
         centerPoint = QDesktopWidget().availableGeometry().center()
         frameGeometry.moveCenter(centerPoint)
         self.move(frameGeometry.topLeft())
+
+
+def get_connector(dbType, connstring):
+    dbTypes = {
+        'sqlite3': sqlite3,
+        'postgres': psycopg2}
+    return Connector(connstring, dbTypes[dbType])
 
 
 def main():
