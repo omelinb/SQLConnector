@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from PyQt5.QtCore import QAbstractTableModel, QVariant, Qt
+from PyQt5.QtCore import QAbstractTableModel, QVariant, Qt, QModelIndex
 from PyQt5.QtWidgets import (QWidget, QPushButton, QPlainTextEdit, QLineEdit,
                              QMessageBox, QApplication, QDesktopWidget,
                              QTableView, QComboBox, QGridLayout, QLabel)
@@ -13,7 +13,7 @@ import sys
 import os
 
 
-BASEDIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class Connector:
@@ -29,24 +29,28 @@ class Connector:
         self.result = None
 
     def execute(self, query):
-        with self.connector.connect(self.connstring) as connect:
-            cursor = connect.cursor()
-            cursor.execute(query)
-            connect.commit()
-            self.description = cursor.description
-            self.result = cursor.fetchmany(size=100)
+        self.connect = self.connector.connect(self.connstring)
+        self.cursor = self.connect.cursor()
+        self.cursor.execute(query)
+        self.connect.commit()
 
     def get_headers(self):
-        if self.description:
-            return [col[0] for col in self.description]
+        if self.cursor.description:
+            return [col[0] for col in self.cursor.description]
         return None
 
     def get_data(self):
-        return self.result
+        return self.cursor.fetchmany(size=1000)
+
+    def __del__(self):
+        self.cursor.close()
+        self.connect.close()
 
 
 class ResultTableModel(QAbstractTableModel):
-    def __init__(self, data, headers, parent=None):
+    ROWS_COUNT = 25
+
+    def __init__(self, data, headers, connector, parent=None):
         """
         Args:
             data: a list of lists
@@ -55,19 +59,44 @@ class ResultTableModel(QAbstractTableModel):
         QAbstractTableModel.__init__(self, parent)
         self.data = data
         self.headers = headers
+        self.rowsLoaded = ResultTableModel.ROWS_COUNT
+        self.connector = connector
 
     def rowCount(self, parent):
-        return len(self.data)
+        if not self.data:
+            return 0
+
+        if len(self.data) <= self.rowsLoaded:
+            return len(self.data)
+        else:
+            return self.rowsLoaded
 
     def columnCount(self, parent):
         return len(self.headers)
+
+    def canFetchMore(self, index=QModelIndex()):
+        if len(self.data) > self.rowsLoaded:
+            return True
+        else:
+            self.addRecords()
+            return False
+
+    def addRecords(self):
+        self.beginResetModel()
+        self.data += self.connector.get_data()
+        self.endResetModel()
+
+    def fetchMore(self, index=QModelIndex()):
+        reminder = len(self.data) - self.rowsLoaded
+        itemsToFetch = min(reminder, ResultTableModel.ROWS_COUNT)
+        self.beginInsertRows(QModelIndex(), self.rowsLoaded, self.rowsLoaded + itemsToFetch - 1)
+        self.rowsLoaded += itemsToFetch
+        self.endInsertRows()
 
     def data(self, index, role):
         if not index.isValid():
             return QVariant()
         elif role != Qt.DisplayRole:
-            return QVariant()
-        elif not self.data:
             return QVariant()
         return QVariant(self.data[index.row()][index.column()])
 
@@ -108,16 +137,16 @@ class MainWidget(QWidget):
         self.launchButton = QPushButton('Launch', self)
 
         grid.addWidget(self.connStringLabel, 0, 0)
-        grid.addWidget(self.connString, 0, 1)
-        grid.addWidget(self.typesList, 0, 2)
+        grid.addWidget(self.connString, 0, 1, 1, 4)
+        grid.addWidget(self.typesList, 0, 5)
 
         grid.addWidget(self.queryFieldLabel, 1, 0)
-        grid.addWidget(self.queryField, 1, 1, 2, 1)
+        grid.addWidget(self.queryField, 1, 1, 2, 4)
 
         grid.addWidget(self.resultTableLabel, 4, 0)
-        grid.addWidget(self.resultTable, 4, 1, 2, 1)
+        grid.addWidget(self.resultTable, 4, 1, 2, 4)
 
-        grid.addWidget(self.launchButton, 7, 2)
+        grid.addWidget(self.launchButton, 7, 5)
 
         self.launchButton.clicked.connect(self.on_click)
         self.setLayout(grid)
@@ -138,7 +167,7 @@ class MainWidget(QWidget):
 
         if dbType == 'sqlite3' and connString != ':memory:':
             if not connString.startswith('/'):
-                connString = os.path.join(BASEDIR, connString)
+                connString = os.path.join(BASE_DIR, connString)
             if not os.path.isfile(connString):
                 self.show_message('There is no such database file.')
                 return
@@ -151,13 +180,13 @@ class MainWidget(QWidget):
             if not headers:
                 self.show_message('There is no result for your query.')
 
-            model = ResultTableModel(data, headers)
+            model = ResultTableModel(data, headers, connector)
             self.resultTable.setModel(model)
         except (psycopg2.ProgrammingError, sqlite3.OperationalError) as e:
-            self.show_message(str(e)[0].capitalize() + str(e)[1:], 'Error!')
+            self.show_message(str(e)[:1].capitalize() + str(e)[1:], 'Error!')
             logging.error(e)
         except psycopg2.OperationalError as e:
-            self.show_message(str(e)[0].capitalize() + str(e)[1:], 'Error!')
+            self.show_message(str(e)[:1].capitalize() + str(e)[1:], 'Error!')
             logging.error(e)
 
     def center(self):
