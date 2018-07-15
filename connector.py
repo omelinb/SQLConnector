@@ -56,33 +56,26 @@ class ResultTableModel(QAbstractTableModel):
             data: a list of lists
             headers: a list of strings
         """
-        QAbstractTableModel.__init__(self, parent)
+        super().__init__(parent)
         self.data = data
         self.headers = headers
         self.rowsLoaded = ResultTableModel.ROWS_COUNT
         self.datasource = datasource
 
     def rowCount(self, parent):
-        if not self.data:
-            return 0
-
         if len(self.data) <= self.rowsLoaded:
             return len(self.data)
-        else:
-            return self.rowsLoaded
+        return self.rowsLoaded
 
     def columnCount(self, parent):
-        if not self.headers:
-            return 0
         return len(self.headers)
 
     def canFetchMore(self, index=QModelIndex()):
         if len(self.data) > self.rowsLoaded:
             return True
-        else:
-            if self.datasource:
-                self.addRecords()
-            return False
+        if self.datasource:
+            self.addRecords()
+        return False
 
     def addRecords(self):
         self.beginResetModel()
@@ -182,6 +175,7 @@ class MainWidget(QWidget):
 
             if not headers:
                 self.show_message('There is no result for your query.')
+                return
 
             model = ResultTableModel(data, headers, connector)
             self.resultTable.setModel(model)
