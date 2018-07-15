@@ -50,7 +50,7 @@ class Connector:
 class ResultTableModel(QAbstractTableModel):
     ROWS_COUNT = 25
 
-    def __init__(self, data, headers, connector, parent=None):
+    def __init__(self, data, headers, datasource=None, parent=None):
         """
         Args:
             data: a list of lists
@@ -60,7 +60,7 @@ class ResultTableModel(QAbstractTableModel):
         self.data = data
         self.headers = headers
         self.rowsLoaded = ResultTableModel.ROWS_COUNT
-        self.connector = connector
+        self.datasource = datasource
 
     def rowCount(self, parent):
         if not self.data:
@@ -80,12 +80,13 @@ class ResultTableModel(QAbstractTableModel):
         if len(self.data) > self.rowsLoaded:
             return True
         else:
-            self.addRecords()
+            if self.datasource:
+                self.addRecords()
             return False
 
     def addRecords(self):
         self.beginResetModel()
-        self.data += self.connector.get_data()
+        self.data += self.datasource.get_data()
         self.endResetModel()
 
     def fetchMore(self, index=QModelIndex()):
