@@ -25,7 +25,6 @@ class Connector:
         """
         self.connstring = connstring
         self.connector = db_type
-        self.description = None
         self.connect = None
 
     def execute(self, query):
@@ -37,7 +36,6 @@ class Connector:
     def get_headers(self):
         if self.cursor.description:
             return [col[0] for col in self.cursor.description]
-        return None
 
     def get_data(self):
         return self.cursor.fetchmany(size=1000)
