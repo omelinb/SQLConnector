@@ -26,7 +26,7 @@ class Connector:
         self.connstring = connstring
         self.connector = db_type
         self.description = None
-        self.result = None
+        self.connect = None
 
     def execute(self, query):
         self.connect = self.connector.connect(self.connstring)
@@ -43,8 +43,8 @@ class Connector:
         return self.cursor.fetchmany(size=1000)
 
     def __del__(self):
-        self.cursor.close()
-        self.connect.close()
+        if self.connect:
+            self.connect.close()
 
 
 class ResultTableModel(QAbstractTableModel):
@@ -72,6 +72,8 @@ class ResultTableModel(QAbstractTableModel):
             return self.rowsLoaded
 
     def columnCount(self, parent):
+        if not self.headers:
+            return 0
         return len(self.headers)
 
     def canFetchMore(self, index=QModelIndex()):
